@@ -229,7 +229,7 @@ But for testing and moderate use, **FREE tier works great**! 🚀
 | Render Static Site (Frontend) | **FREE** |
 | Redis (Upstash/Railway) | **FREE** |
 | Groq AI (LLM) | **FREE** ✨ |
-| Edge TTS (Voiceover) | **FREE** ✨ |
+| Google TTS (Voiceover) | **FREE** ✨ |
 | Pexels (Stock Videos) | **FREE** ✨ |
 | **TOTAL** | **$0/month** 🎉 |
 

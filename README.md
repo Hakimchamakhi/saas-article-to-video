@@ -2,12 +2,12 @@
 
 A full-stack web application that automatically converts blog articles into engaging short videos with AI-generated voiceovers and relevant stock footage - **100% FREE APIs!**
 
-> No credit card required! Uses Groq AI (FREE), Edge TTS (FREE), and Pexels (FREE)
+> No credit card required! Uses Groq AI (FREE), Google TTS (FREE), and Pexels (FREE)
 
 ## Features
 
-- **AI-Powered Script Generation**: Uses Groq AI (FREE!) with Llama 3.1 to summarize articles into video scripts
-- **Professional Voiceover**: Leverages Microsoft Edge TTS (FREE!) for natural-sounding narration
+- **AI-Powered Script Generation**: Uses Groq AI (FREE!) with Llama 3.3 to summarize articles into video scripts
+- **Professional Voiceover**: Leverages Google Text-to-Speech (FREE!) for natural-sounding narration
 - **Automatic Stock Footage**: Finds and integrates relevant stock videos from Pexels (FREE!)
 - **Asynchronous Processing**: Uses Celery and Redis for efficient background task processing
 - **Modern UI**: Clean, responsive interface built with React and Tailwind CSS
@@ -20,8 +20,8 @@ A full-stack web application that automatically converts blog articles into enga
 - **FastAPI**: Modern, fast web framework for Python
 - **Celery**: Distributed task queue for async processing
 - **Redis**: Message broker and result backend
-- **Groq API**: Fast, free LLM API (Llama 3.1) for script generation
-- **Edge TTS**: Free Microsoft text-to-speech for voiceover
+- **Groq API**: Fast, free LLM API (Llama 3.3) for script generation
+- **Google TTS (gTTS)**: Free Google text-to-speech for voiceover
 - **Pexels API**: Free stock video footage
 - **MoviePy**: Video editing and assembly
 - **Newspaper3k**: Article scraping and parsing
@@ -98,7 +98,7 @@ You'll need to obtain API keys for the following services:
    - Get your API key at [Pexels API](https://www.pexels.com/api/)
    - The API is completely free (200 requests/hour)
 
-**Note**: Edge TTS requires no API key - it's built-in and completely free!
+**Note**: Google TTS requires no API key - it's built-in and completely free!
 
 ## Installation & Setup
 
@@ -224,7 +224,7 @@ The frontend will be available at `http://localhost:3000`
 4. **Background Processing**: Celery worker executes the video generation pipeline:
    - Scrapes article text using Newspaper3k
    - Summarizes content into a video script using Groq AI (Llama 3.1)
-   - Generates voiceover using Edge TTS (FREE!)
+   - Generates voiceover using Google TTS (FREE!)
    - Searches and downloads stock videos from Pexels
    - Assembles video clips with audio using MoviePy
 5. **Completion**: When done, the video URL is returned to the frontend
@@ -286,8 +286,8 @@ For production deployment, consider:
 
 **🎉 100% FREE! 🎉**
 
-- **Groq AI (Llama 3.1)**: FREE with generous rate limits (no credit card required!)
-- **Edge TTS**: Completely FREE (no API key needed)
+- **Groq AI (Llama 3.3)**: FREE with generous rate limits (no credit card required!)
+- **Google TTS**: Completely FREE (no API key needed)
 - **Pexels**: FREE (200 requests/hour)
 
 **Estimated cost per video**: $0.00
@@ -330,7 +330,7 @@ For issues, questions, or contributions, please open an issue on the GitHub repo
 ## Credits
 
 - **Groq** for free, fast LLM API (Llama models)
-- **Microsoft** for Edge TTS (free text-to-speech)
+- **Google** for Google TTS (free text-to-speech)
 - **Pexels** for free stock video footage
 - **MoviePy** for video processing
 - **FastAPI** for the backend framework
