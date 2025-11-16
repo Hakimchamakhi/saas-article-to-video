@@ -16,6 +16,12 @@ function App() {
   const [progress, setProgress] = useState('')
   const pollingIntervalRef = useRef(null)
 
+  // Log API configuration on mount
+  useEffect(() => {
+    console.log('API Base URL:', API_BASE_URL)
+    console.log('VITE_API_URL env var:', import.meta.env.VITE_API_URL || 'not set')
+  }, [])
+
   // Clean up polling interval on unmount
   useEffect(() => {
     return () => {
@@ -111,8 +117,25 @@ function App() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to start video generation')
+        // Try to get error details
+        const contentType = response.headers.get('content-type')
+        let errorMessage = `Server error: ${response.status} ${response.statusText}`
+
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.detail || errorMessage
+          } catch (e) {
+            // JSON parsing failed, use default message
+          }
+        } else {
+          // Non-JSON response, might be HTML error page
+          const textResponse = await response.text()
+          console.error('Non-JSON response:', textResponse)
+          errorMessage += '\n\nCheck backend logs for details. Make sure GROQ_API_KEY, PEXELS_API_KEY, and REDIS_URL are configured.'
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
@@ -120,6 +143,7 @@ function App() {
       setStatus('pending')
       setProgress('Initializing...')
     } catch (err) {
+      console.error('Error generating video:', err)
       setError(err.message)
       setIsProcessing(false)
     }
