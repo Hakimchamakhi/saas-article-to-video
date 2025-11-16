@@ -60,7 +60,6 @@ services:
   - type: web
     name: blog-to-video-frontend
     env: static
-    region: oregon # Free tier region
     plan: free # FREE TIER
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: frontend/dist
@@ -72,7 +71,4 @@ services:
       - key: NODE_VERSION
         value: 18.17.0
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: blog-to-video-api
-          property: url
+        sync: false # Add your backend API URL manually after backend deploys

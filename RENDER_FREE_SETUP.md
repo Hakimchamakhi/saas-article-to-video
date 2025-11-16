@@ -151,9 +151,11 @@ For **both** the backend API and worker services, add these environment variable
 
 ### For the Frontend service:
 
-1. **VITE_API_URL**
-   - Value: Your backend API URL from Render
+1. **VITE_API_URL** (Set AFTER backend deploys!)
+   - Value: Your backend API URL from Render (WITHOUT /api suffix)
    - Example: `https://blog-to-video-api.onrender.com`
+   - **Important**: Wait for the backend service to deploy first, then copy its URL and add it here
+   - After adding this, trigger a redeploy of the frontend service
 
 ## Step 6: Deploy!
 
