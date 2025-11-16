@@ -312,8 +312,8 @@ Respond ONLY with the JSON array, no additional text."""
                 logger.info(f"Processing clip {idx + 1}/{len(video_clips_paths)}")
                 clip = VideoFileClip(video_path)
 
-                # Resize to very low resolution (360p) to save memory on free tier (512MB limit)
-                clip = clip.resize(height=360)
+                # Resize to minimal resolution (240p) to save maximum memory on free tier (512MB limit)
+                clip = clip.resize(height=240)
 
                 # Trim clip to fit the scene duration
                 if clip.duration > duration_per_scene:
