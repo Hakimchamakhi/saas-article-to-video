@@ -15,17 +15,30 @@ from dotenv import load_dotenv
 
 # Third-party libraries
 from newspaper import Article
-from openai import OpenAI
+from groq import Groq
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+import asyncio
+import edge_tts
 
 # Load environment variables
 load_dotenv()
 
+# Configure Redis URL with SSL support
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+# If using rediss:// (SSL), add SSL parameters
+broker_use_ssl = None
+if redis_url.startswith("rediss://"):
+    import ssl
+    broker_use_ssl = {
+        'ssl_cert_reqs': ssl.CERT_NONE
+    }
+
 # Configure Celery
 celery_app = Celery(
     "video_generator",
-    broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-    backend=os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    broker=redis_url,
+    backend=redis_url
 )
 
 celery_app.conf.update(
@@ -35,12 +48,14 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
     task_track_started=True,
+    broker_use_ssl=broker_use_ssl,
+    redis_backend_use_ssl=broker_use_ssl,
 )
 
 logger = get_task_logger(__name__)
 
-# Initialize OpenAI client
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize Groq client (FREE API)
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Pexels API configuration
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
@@ -109,14 +124,9 @@ def generate_video_task(self, url: str):
 
         logger.info(f"Successfully scraped article. Length: {len(article_text)} characters")
 
-        # Step 2: Generate video script using OpenAI GPT
-        self.update_progress(
-            message="Generating video script with AI...",
-            percentage=30,
-            current_step="Step 2 of 5: Generating script",
-            total_steps=5
-        )
-        logger.info("Calling OpenAI API to generate script...")
+        # Step 2: Generate video script using Groq (FREE API)
+        self.update_progress("Generating video script with AI...")
+        logger.info("Calling Groq API to generate script...")
 
         script_prompt = f"""You are a video scriptwriter. Summarize the following article into a short video script. The script must be a JSON array of objects, where each object has two keys: 'scene_text' (a 1-2 sentence narration for that scene) and 'search_keyword' (a 2-3 word keyword for finding stock footage for that scene).
 
@@ -133,8 +143,8 @@ Article Text:
 
 Respond ONLY with the JSON array, no additional text."""
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4",
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-70b-versatile",  # Free Groq model
             messages=[
                 {"role": "system", "content": "You are a professional video scriptwriter. Always respond with valid JSON only."},
                 {"role": "user", "content": script_prompt}
@@ -165,31 +175,27 @@ Respond ONLY with the JSON array, no additional text."""
 
         logger.info(f"Generated script with {len(script_scenes)} scenes")
 
-        # Step 3: Generate voiceover using OpenAI TTS
-        self.update_progress(
-            message="Generating AI voiceover...",
-            percentage=50,
-            current_step="Step 3 of 5: Creating voiceover",
-            total_steps=5
-        )
-        logger.info("Generating voiceover with OpenAI TTS...")
+        # Step 3: Generate voiceover using Edge TTS (FREE)
+        self.update_progress("Generating AI voiceover...")
+        logger.info("Generating voiceover with Edge TTS...")
 
         # Combine all scene texts into one narration
         full_narration = " ".join([scene["scene_text"] for scene in script_scenes])
 
-        # Generate TTS audio
-        tts_response = openai_client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",  # Options: alloy, echo, fable, onyx, nova, shimmer
-            input=full_narration
-        )
-
-        # Save voiceover to temporary file
+        # Generate TTS audio using Edge TTS
         voiceover_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
         temp_files.append(voiceover_path)
 
-        with open(voiceover_path, 'wb') as f:
-            f.write(tts_response.content)
+        # Edge TTS is async, so we need to run it in an event loop
+        async def generate_tts():
+            communicate = edge_tts.Communicate(
+                full_narration,
+                voice="en-US-AriaNeural"  # Natural female voice, other options: en-US-GuyNeural, en-GB-SoniaNeural
+            )
+            await communicate.save(voiceover_path)
+
+        # Run the async function
+        asyncio.run(generate_tts())
 
         logger.info(f"Voiceover saved to {voiceover_path}")
 

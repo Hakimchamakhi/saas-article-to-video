@@ -1,0 +1,35 @@
+services:
+  # Backend API + Celery Worker (Combined) - FREE TIER
+  - type: web
+    name: blog-to-video-api
+    env: python
+    region: oregon # Free tier region
+    plan: free # FREE TIER
+    buildCommand: "pip install -r backend/requirements.txt && chmod +x backend/start.sh"
+    startCommand: "cd backend && ./start.sh"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: REDIS_URL
+        sync: false # You'll add this manually from external Redis provider
+      - key: GROQ_API_KEY
+        sync: false # Add your FREE Groq API key from https://console.groq.com/keys
+      - key: PEXELS_API_KEY
+        sync: false # Add your FREE Pexels API key from https://www.pexels.com/api/
+    healthCheckPath: /
+
+  # Frontend (React/Vite) - FREE TIER
+  - type: web
+    name: blog-to-video-frontend
+    env: static
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: VITE_API_URL
+        sync: false # Add your backend API URL manually after backend deploys

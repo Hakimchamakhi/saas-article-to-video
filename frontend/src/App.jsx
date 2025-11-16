@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 
-const API_BASE_URL = '/api'
+// Use environment variable for API URL, fallback to relative path for local dev
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
 const POLL_INTERVAL = 5000 // Poll every 5 seconds
 
 function App() {
@@ -14,6 +17,12 @@ function App() {
   const [percentage, setPercentage] = useState(0)
   const [currentStep, setCurrentStep] = useState('')
   const pollingIntervalRef = useRef(null)
+
+  // Log API configuration on mount
+  useEffect(() => {
+    console.log('API Base URL:', API_BASE_URL)
+    console.log('VITE_API_URL env var:', import.meta.env.VITE_API_URL || 'not set')
+  }, [])
 
   // Clean up polling interval on unmount
   useEffect(() => {
@@ -114,8 +123,25 @@ function App() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to start video generation')
+        // Try to get error details
+        const contentType = response.headers.get('content-type')
+        let errorMessage = `Server error: ${response.status} ${response.statusText}`
+
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.detail || errorMessage
+          } catch (e) {
+            // JSON parsing failed, use default message
+          }
+        } else {
+          // Non-JSON response, might be HTML error page
+          const textResponse = await response.text()
+          console.error('Non-JSON response:', textResponse)
+          errorMessage += '\n\nCheck backend logs for details. Make sure GROQ_API_KEY, PEXELS_API_KEY, and REDIS_URL are configured.'
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
@@ -123,6 +149,7 @@ function App() {
       setStatus('pending')
       setProgress('Initializing...')
     } catch (err) {
+      console.error('Error generating video:', err)
       setError(err.message)
       setIsProcessing(false)
     }
@@ -415,7 +442,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center text-gray-600 text-sm">
-          <p>Powered by OpenAI GPT-4, OpenAI TTS, Pexels, and MoviePy</p>
+          <p>Powered by Groq AI (FREE), Edge TTS (FREE), Pexels (FREE), and MoviePy</p>
         </div>
       </div>
     </div>
