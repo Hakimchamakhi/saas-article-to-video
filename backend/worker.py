@@ -144,7 +144,7 @@ Article Text:
 Respond ONLY with the JSON array, no additional text."""
 
         response = groq_client.chat.completions.create(
-            model="llama-3.1-70b-versatile",  # Free Groq model
+            model="llama-3.3-70b-versatile",  # Free Groq model (updated)
             messages=[
                 {"role": "system", "content": "You are a professional video scriptwriter. Always respond with valid JSON only."},
                 {"role": "user", "content": script_prompt}
