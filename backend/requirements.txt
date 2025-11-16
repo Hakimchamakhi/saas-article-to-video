@@ -12,8 +12,11 @@ newspaper3k==0.2.8
 lxml==4.9.3
 lxml_html_clean==0.1.1
 
-# OpenAI Integration
-openai==1.10.0
+# AI Integration (FREE APIs)
+groq==0.4.2
+
+# Text-to-Speech (FREE)
+edge-tts==6.1.9
 
 # Video Processing
 moviepy==1.0.3

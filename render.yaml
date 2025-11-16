@@ -12,8 +12,10 @@ services:
         value: 3.11.0
       - key: REDIS_URL
         sync: false # You'll add this manually from external Redis provider
-      - key: OPENAI_API_KEY
-        sync: false # Add your OpenAI API key
+      - key: GROQ_API_KEY
+        sync: false # Add your FREE Groq API key from https://console.groq.com/keys
+      - key: PEXELS_API_KEY
+        sync: false # Add your FREE Pexels API key from https://www.pexels.com/api/
       - key: CELERY_BROKER_URL
         fromService:
           type: web
@@ -39,8 +41,10 @@ services:
         value: 3.11.0
       - key: REDIS_URL
         sync: false # You'll add this manually from external Redis provider
-      - key: OPENAI_API_KEY
-        sync: false # Add your OpenAI API key
+      - key: GROQ_API_KEY
+        sync: false # Add your FREE Groq API key from https://console.groq.com/keys
+      - key: PEXELS_API_KEY
+        sync: false # Add your FREE Pexels API key from https://www.pexels.com/api/
       - key: CELERY_BROKER_URL
         fromService:
           type: web

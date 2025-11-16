@@ -1,15 +1,18 @@
-# Blog to Video Converter
+# Blog to Video Converter 🎬
 
-A full-stack web application that automatically converts blog articles into engaging short videos with AI-generated voiceovers and relevant stock footage.
+A full-stack web application that automatically converts blog articles into engaging short videos with AI-generated voiceovers and relevant stock footage - **100% FREE APIs!**
+
+> No credit card required! Uses Groq AI (FREE), Edge TTS (FREE), and Pexels (FREE)
 
 ## Features
 
-- **AI-Powered Script Generation**: Uses OpenAI GPT-4 to summarize articles into video scripts
-- **Professional Voiceover**: Leverages OpenAI's TTS (Text-to-Speech) for natural-sounding narration
-- **Automatic Stock Footage**: Finds and integrates relevant stock videos from Pexels
+- **AI-Powered Script Generation**: Uses Groq AI (FREE!) with Llama 3.1 to summarize articles into video scripts
+- **Professional Voiceover**: Leverages Microsoft Edge TTS (FREE!) for natural-sounding narration
+- **Automatic Stock Footage**: Finds and integrates relevant stock videos from Pexels (FREE!)
 - **Asynchronous Processing**: Uses Celery and Redis for efficient background task processing
 - **Modern UI**: Clean, responsive interface built with React and Tailwind CSS
 - **Real-time Progress**: Live status updates during video generation
+- **100% Free APIs**: No credit card required for AI services!
 
 ## Technology Stack
 
@@ -17,8 +20,9 @@ A full-stack web application that automatically converts blog articles into enga
 - **FastAPI**: Modern, fast web framework for Python
 - **Celery**: Distributed task queue for async processing
 - **Redis**: Message broker and result backend
-- **OpenAI API**: GPT-4 for summarization and TTS for voiceover
-- **Pexels API**: Stock video footage
+- **Groq API**: Fast, free LLM API (Llama 3.1) for script generation
+- **Edge TTS**: Free Microsoft text-to-speech for voiceover
+- **Pexels API**: Free stock video footage
 - **MoviePy**: Video editing and assembly
 - **Newspaper3k**: Article scraping and parsing
 
@@ -79,19 +83,22 @@ sudo apt install python3 python3-pip nodejs npm redis-server ffmpeg
 - Install Redis from [redis.io](https://redis.io/download) or use Windows Subsystem for Linux (WSL)
 - Install FFmpeg from [ffmpeg.org](https://ffmpeg.org/download.html)
 
-## API Keys Required
+## API Keys Required (All 100% FREE!)
 
 You'll need to obtain API keys for the following services:
 
-1. **OpenAI API Key**
-   - Sign up at [OpenAI Platform](https://platform.openai.com/)
-   - Create an API key at [API Keys](https://platform.openai.com/api-keys)
-   - Ensure you have credits available for GPT-4 and TTS API usage
+1. **Groq API Key** (FREE - No Credit Card!)
+   - Sign up at [Groq Console](https://console.groq.com/)
+   - Create an API key at [API Keys](https://console.groq.com/keys)
+   - Completely free with generous rate limits
+   - No credit card required!
 
-2. **Pexels API Key**
+2. **Pexels API Key** (FREE)
    - Sign up at [Pexels](https://www.pexels.com/)
    - Get your API key at [Pexels API](https://www.pexels.com/api/)
-   - The API is free for non-commercial use
+   - The API is completely free (200 requests/hour)
+
+**Note**: Edge TTS requires no API key - it's built-in and completely free!
 
 ## Installation & Setup
 
@@ -124,7 +131,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Edit .env and add your API keys
-# OPENAI_API_KEY=your_openai_api_key_here
+# GROQ_API_KEY=your_groq_api_key_here
 # PEXELS_API_KEY=your_pexels_api_key_here
 # REDIS_URL=redis://localhost:6379/0
 ```
@@ -216,8 +223,8 @@ The frontend will be available at `http://localhost:3000`
 3. **Status Polling**: Frontend polls the status endpoint every 5 seconds
 4. **Background Processing**: Celery worker executes the video generation pipeline:
    - Scrapes article text using Newspaper3k
-   - Summarizes content into a video script using GPT-4
-   - Generates voiceover using OpenAI TTS
+   - Summarizes content into a video script using Groq AI (Llama 3.1)
+   - Generates voiceover using Edge TTS (FREE!)
    - Searches and downloads stock videos from Pexels
    - Assembles video clips with audio using MoviePy
 5. **Completion**: When done, the video URL is returned to the frontend
@@ -242,8 +249,8 @@ The frontend will be available at `http://localhost:3000`
 **Issue**: FFmpeg not found
 - **Solution**: Install FFmpeg and ensure it's in your system PATH
 
-**Issue**: OpenAI API errors
-- **Solution**: Verify your API key is correct and you have sufficient credits
+**Issue**: Groq API errors
+- **Solution**: Verify your API key is correct (starts with `gsk_`) and check rate limits
 
 **Issue**: No videos found from Pexels
 - **Solution**: Check your Pexels API key and ensure you're not hitting rate limits
@@ -275,20 +282,23 @@ For production deployment, consider:
 
 ## Cost Considerations
 
-### API Usage Costs (Approximate)
+### API Usage Costs
 
-- **OpenAI GPT-4**: ~$0.03 per video (script generation)
-- **OpenAI TTS**: ~$0.015 per 1000 characters (~$0.05 per video)
-- **Pexels**: Free (with attribution for commercial use)
+**🎉 100% FREE! 🎉**
 
-**Estimated cost per video**: $0.08 - $0.15
+- **Groq AI (Llama 3.1)**: FREE with generous rate limits (no credit card required!)
+- **Edge TTS**: Completely FREE (no API key needed)
+- **Pexels**: FREE (200 requests/hour)
 
-### Cost Optimization Tips
+**Estimated cost per video**: $0.00
 
-- Use GPT-3.5-turbo instead of GPT-4 for script generation (significantly cheaper)
-- Cache API responses when possible
-- Implement rate limiting to prevent abuse
-- Set up billing alerts in OpenAI dashboard
+### Why This Stack is Amazing
+
+- **No Credit Card Required**: All APIs are completely free
+- **No Hidden Costs**: Zero surprises on your bill
+- **Production Ready**: Free tier is suitable for real applications
+- **Rate Limits**: Groq provides generous free tier limits
+- **No Expiration**: Services remain free indefinitely
 
 ## Limitations
 
@@ -319,8 +329,9 @@ For issues, questions, or contributions, please open an issue on the GitHub repo
 
 ## Credits
 
-- **OpenAI** for GPT-4 and TTS
-- **Pexels** for stock video footage
+- **Groq** for free, fast LLM API (Llama models)
+- **Microsoft** for Edge TTS (free text-to-speech)
+- **Pexels** for free stock video footage
 - **MoviePy** for video processing
 - **FastAPI** for the backend framework
 - **React** for the frontend framework

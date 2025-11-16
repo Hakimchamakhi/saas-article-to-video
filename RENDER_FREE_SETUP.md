@@ -16,8 +16,8 @@ You'll need:
 1. GitHub account (to host your code)
 2. Render account (free tier)
 3. Free Redis instance (from Upstash or Railway)
-4. OpenAI API key (for GPT & TTS)
-5. Pexels API key (for stock videos)
+4. Groq API key (100% FREE - no credit card!)
+5. Pexels API key (100% FREE - for stock videos)
 
 ## Step 1: Get a FREE Redis Instance
 
@@ -50,7 +50,34 @@ You need Redis for Celery task queue. Choose **ONE** of these free options:
 4. Create a database
 5. Copy the **Redis URL** from the configuration page
 
-## Step 2: Push Your Code to GitHub
+## Step 2: Get FREE API Keys
+
+### Groq API Key (100% FREE - No Credit Card!)
+
+1. Go to https://console.groq.com/
+2. Sign up with your email or GitHub
+3. Click on "API Keys" in the left sidebar
+4. Click "Create API Key"
+5. Copy your API key (starts with `gsk_...`)
+
+**Why Groq?**
+- Completely FREE (no credit card required)
+- Fast inference with Llama models
+- Generous rate limits for free tier
+- No hidden costs
+
+### Pexels API Key (100% FREE)
+
+1. Go to https://www.pexels.com/api/
+2. Click "Get Started"
+3. Sign up for a free account
+4. Go to your account settings
+5. Generate an API key
+6. Copy your API key
+
+**Rate limits:** 200 requests/hour (more than enough!)
+
+## Step 3: Push Your Code to GitHub
 
 ```bash
 # If not already initialized
@@ -63,7 +90,7 @@ git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
 git push -u origin main
 ```
 
-## Step 3: Deploy to Render
+## Step 4: Deploy to Render
 
 ### Option A: Using render.yaml (Automatic)
 
@@ -101,7 +128,7 @@ If you prefer manual setup, create each service:
 - Publish Directory: `frontend/dist`
 - Plan: **Free**
 
-## Step 4: Configure Environment Variables
+## Step 5: Configure Environment Variables
 
 For **both** the backend API and worker services, add these environment variables:
 
@@ -111,12 +138,14 @@ For **both** the backend API and worker services, add these environment variable
    - Value: Your Redis URL from Step 1
    - Example: `rediss://default:xxxxx@xxxxxx.upstash.io:6379`
 
-2. **OPENAI_API_KEY**
-   - Value: Your OpenAI API key
-   - Get it from: https://platform.openai.com/api-keys
+2. **GROQ_API_KEY** (100% FREE!)
+   - Value: Your Groq API key from Step 2
+   - Example: `gsk_xxxxxxxxxxxxxxxxx`
+   - Get it from: https://console.groq.com/keys
+   - No credit card required!
 
-3. **PEXELS_API_KEY** (Optional but recommended)
-   - Value: Your Pexels API key
+3. **PEXELS_API_KEY** (100% FREE!)
+   - Value: Your Pexels API key from Step 2
    - Get it from: https://www.pexels.com/api/
    - Note: Free tier allows 200 requests/hour
 
@@ -126,13 +155,13 @@ For **both** the backend API and worker services, add these environment variable
    - Value: Your backend API URL from Render
    - Example: `https://blog-to-video-api.onrender.com`
 
-## Step 5: Deploy!
+## Step 6: Deploy!
 
 1. Click **"Apply"** or **"Create"** to start the deployment
 2. Wait for all services to build (first build takes 5-10 minutes)
 3. All services will be on the **FREE tier** - no payment required! 🎉
 
-## Step 6: Test Your Application
+## Step 7: Test Your Application
 
 1. Once deployed, click on your frontend URL (e.g., `https://blog-to-video-frontend.onrender.com`)
 2. Paste a blog article URL
@@ -169,9 +198,10 @@ For **both** the backend API and worker services, add these environment variable
 - For Upstash, use the `rediss://` URL (with double 's')
 - Check if your Redis instance has password authentication enabled
 
-### "OpenAI API error"
-- Verify your OPENAI_API_KEY is correct
-- Make sure you have credits in your OpenAI account
+### "Groq API error"
+- Verify your GROQ_API_KEY is correct (should start with `gsk_`)
+- Check you haven't exceeded Groq's free tier rate limits
+- Make sure you created the API key at https://console.groq.com/keys
 
 ### "Video generation fails"
 - Check that PEXELS_API_KEY is set
@@ -203,11 +233,12 @@ But for testing and moderate use, **FREE tier works great**! 🚀
 | Render Worker Service | **FREE** |
 | Render Static Site (Frontend) | **FREE** |
 | Redis (Upstash/Railway) | **FREE** |
-| **TOTAL** | **$0/month** ✨ |
+| Groq AI (LLM) | **FREE** ✨ |
+| Edge TTS (Voiceover) | **FREE** ✨ |
+| Pexels (Stock Videos) | **FREE** ✨ |
+| **TOTAL** | **$0/month** 🎉 |
 
-The only costs are:
-- OpenAI API usage (pay-as-you-go, ~$0.10-0.50 per video)
-- Pexels API is completely free!
+**Everything is 100% FREE!** No hidden costs, no credit card required for AI services!
 
 ## Next Steps
 
