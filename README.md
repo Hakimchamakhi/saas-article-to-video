@@ -262,10 +262,25 @@ Monitor the Celery worker terminal for detailed progress and error messages. The
 
 ## Production Deployment
 
-For production deployment, consider:
+### Free Deployment Options
+
+**Deploy for FREE using Vercel + Render!**
+
+See the complete deployment guide: **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+This guide includes:
+- ✅ Step-by-step instructions for deploying to Vercel (frontend) and Render (backend)
+- ✅ Free tier configuration for both platforms
+- ✅ Environment variable setup
+- ✅ Troubleshooting common issues
+- ✅ Production optimization tips
+
+### Advanced Production Considerations
+
+For custom deployments or scaling, consider:
 
 1. **Environment Variables**: Use secure secret management
-2. **CORS**: Update CORS settings in `backend/main.py` to specify your frontend domain
+2. **CORS**: CORS is automatically configured via `FRONTEND_URL` environment variable
 3. **Process Manager**: Use Supervisor or systemd for managing backend processes
 4. **Reverse Proxy**: Use Nginx or Apache as a reverse proxy
 5. **Static Files**: Serve static files through a CDN

@@ -1,0 +1,45 @@
+services:
+  # FastAPI Backend
+  - type: web
+    name: blog-to-video-api
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: blog-to-video-redis
+          property: connectionString
+    healthCheckPath: /
+
+  # Celery Worker
+  - type: worker
+    name: blog-to-video-worker
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && celery -A worker.celery_app worker --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: blog-to-video-redis
+          property: connectionString
+
+# Redis Database
+databases:
+  - name: blog-to-video-redis
+    databaseName: blog-to-video
+    plan: free

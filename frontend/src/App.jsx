@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 
-const API_BASE_URL = '/api'
+// Use environment variable for API URL, fallback to /api for local development
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 const POLL_INTERVAL = 5000 // Poll every 5 seconds
 
 function App() {

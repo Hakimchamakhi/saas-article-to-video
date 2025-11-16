@@ -15,10 +15,18 @@ from worker import celery_app, generate_video_task
 
 app = FastAPI(title="Blog to Video Converter API")
 
-# Enable CORS for frontend
+# Configure CORS based on environment
+# In production, set FRONTEND_URL environment variable
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+allowed_origins = [frontend_url] if frontend_url != "*" else ["*"]
+
+# Support multiple frontend URLs for staging/production
+if "," in frontend_url:
+    allowed_origins = [url.strip() for url in frontend_url.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
