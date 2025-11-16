@@ -13,7 +13,7 @@ lxml==4.9.3
 lxml_html_clean==0.1.1
 
 # AI Integration (FREE APIs)
-groq==0.4.2
+groq==0.14.0
 
 # Text-to-Speech (FREE)
 edge-tts==6.1.9
