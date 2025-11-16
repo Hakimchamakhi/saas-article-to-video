@@ -14,6 +14,8 @@ function App() {
   const [error, setError] = useState(null)
   const [videoUrl, setVideoUrl] = useState(null)
   const [progress, setProgress] = useState('')
+  const [percentage, setPercentage] = useState(0)
+  const [currentStep, setCurrentStep] = useState('')
   const pollingIntervalRef = useRef(null)
 
   // Log API configuration on mount
@@ -43,6 +45,8 @@ function App() {
       const data = await response.json()
       setStatus(data.status)
       setProgress(data.progress || '')
+      setPercentage(data.percentage || 0)
+      setCurrentStep(data.current_step || '')
 
       if (data.status === 'complete') {
         // Stop polling
@@ -98,6 +102,8 @@ function App() {
     setVideoUrl(null)
     setStatus(null)
     setProgress('')
+    setPercentage(0)
+    setCurrentStep('')
 
     // Validate URL
     if (!url.trim()) {
@@ -156,6 +162,8 @@ function App() {
     setError(null)
     setVideoUrl(null)
     setProgress('')
+    setPercentage(0)
+    setCurrentStep('')
     setIsProcessing(false)
 
     if (pollingIntervalRef.current) {
@@ -238,20 +246,45 @@ function App() {
                     {/* Status Text */}
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {status === 'pending' && 'Queued...'}
-                        {status === 'processing' && 'Processing...'}
+                        {currentStep || (status === 'pending' ? 'Waiting in queue...' : 'Processing...')}
                       </h3>
-                      <p className="text-gray-700">
-                        {progress || 'Please wait while we generate your video. This may take a few minutes.'}
-                      </p>
+
+                      {/* Progress Bar */}
+                      <div className="mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-gray-700">
+                            {progress || 'Please wait while we generate your video...'}
+                          </span>
+                          <span className="text-sm font-semibold text-primary-600">
+                            {percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
                       <div className="mt-4 text-sm text-gray-600">
-                        <p className="mb-1">The process includes:</p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Scraping and analyzing the article</li>
-                          <li>Generating video script with AI</li>
-                          <li>Creating voiceover narration</li>
-                          <li>Finding relevant stock footage</li>
-                          <li>Assembling the final video</li>
+                        <p className="mb-1 font-medium">Video generation process:</p>
+                        <ul className="space-y-1 ml-2">
+                          <li className={`flex items-center ${percentage >= 10 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                            {percentage >= 30 ? '✓' : percentage >= 10 ? '→' : '○'} Step 1: Scraping and analyzing the article
+                          </li>
+                          <li className={`flex items-center ${percentage >= 30 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                            {percentage >= 50 ? '✓' : percentage >= 30 ? '→' : '○'} Step 2: Generating video script with AI
+                          </li>
+                          <li className={`flex items-center ${percentage >= 50 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                            {percentage >= 65 ? '✓' : percentage >= 50 ? '→' : '○'} Step 3: Creating voiceover narration
+                          </li>
+                          <li className={`flex items-center ${percentage >= 65 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                            {percentage >= 85 ? '✓' : percentage >= 65 ? '→' : '○'} Step 4: Finding relevant stock footage
+                          </li>
+                          <li className={`flex items-center ${percentage >= 85 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                            {percentage >= 100 ? '✓' : percentage >= 85 ? '→' : '○'} Step 5: Assembling the final video
+                          </li>
                         </ul>
                       </div>
                     </div>
