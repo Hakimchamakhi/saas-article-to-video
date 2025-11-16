@@ -42,6 +42,9 @@ class StatusResponse(BaseModel):
     error: str = None
     video_url: str = None
     progress: str = None
+    percentage: int = 0
+    current_step: str = None
+    total_steps: int = 5
 
 
 @app.get("/")
@@ -79,11 +82,28 @@ async def get_status(job_id: str):
         task_result = AsyncResult(job_id, app=celery_app)
 
         if task_result.state == "PENDING":
-            return StatusResponse(status="pending", progress="Task is queued...")
+            return StatusResponse(
+                status="pending",
+                progress="Task is queued...",
+                percentage=0,
+                current_step="Waiting in queue",
+                total_steps=5
+            )
         elif task_result.state == "PROGRESS":
             # Custom state we'll use to report progress
-            progress_info = task_result.info.get("progress", "Processing...")
-            return StatusResponse(status="processing", progress=progress_info)
+            task_info = task_result.info or {}
+            progress_info = task_info.get("progress", "Processing...")
+            percentage = task_info.get("percentage", 0)
+            current_step = task_info.get("current_step", "Processing...")
+            total_steps = task_info.get("total_steps", 5)
+
+            return StatusResponse(
+                status="processing",
+                progress=progress_info,
+                percentage=percentage,
+                current_step=current_step,
+                total_steps=total_steps
+            )
         elif task_result.state == "FAILURE":
             error_message = str(task_result.info)
             return StatusResponse(status="failed", error=error_message)

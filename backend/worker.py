@@ -60,10 +60,18 @@ def generate_random_filename():
 class VideoGenerationTask(Task):
     """Custom task class with progress tracking"""
 
-    def update_progress(self, message):
-        """Update task progress"""
-        logger.info(message)
-        self.update_state(state='PROGRESS', meta={'progress': message})
+    def update_progress(self, message, percentage=0, current_step="", total_steps=5):
+        """Update task progress with detailed information"""
+        logger.info(f"[{percentage}%] {message}")
+        self.update_state(
+            state='PROGRESS',
+            meta={
+                'progress': message,
+                'percentage': percentage,
+                'current_step': current_step,
+                'total_steps': total_steps
+            }
+        )
 
 
 @celery_app.task(bind=True, base=VideoGenerationTask, name="generate_video_task")
@@ -83,7 +91,12 @@ def generate_video_task(self, url: str):
 
     try:
         # Step 1: Scrape the article
-        self.update_progress("Scraping article content...")
+        self.update_progress(
+            message="Scraping article content...",
+            percentage=10,
+            current_step="Step 1 of 5: Scraping article",
+            total_steps=5
+        )
         logger.info(f"Scraping article from URL: {url}")
 
         article = Article(url)
@@ -97,7 +110,12 @@ def generate_video_task(self, url: str):
         logger.info(f"Successfully scraped article. Length: {len(article_text)} characters")
 
         # Step 2: Generate video script using OpenAI GPT
-        self.update_progress("Generating video script with AI...")
+        self.update_progress(
+            message="Generating video script with AI...",
+            percentage=30,
+            current_step="Step 2 of 5: Generating script",
+            total_steps=5
+        )
         logger.info("Calling OpenAI API to generate script...")
 
         script_prompt = f"""You are a video scriptwriter. Summarize the following article into a short video script. The script must be a JSON array of objects, where each object has two keys: 'scene_text' (a 1-2 sentence narration for that scene) and 'search_keyword' (a 2-3 word keyword for finding stock footage for that scene).
@@ -148,7 +166,12 @@ Respond ONLY with the JSON array, no additional text."""
         logger.info(f"Generated script with {len(script_scenes)} scenes")
 
         # Step 3: Generate voiceover using OpenAI TTS
-        self.update_progress("Generating AI voiceover...")
+        self.update_progress(
+            message="Generating AI voiceover...",
+            percentage=50,
+            current_step="Step 3 of 5: Creating voiceover",
+            total_steps=5
+        )
         logger.info("Generating voiceover with OpenAI TTS...")
 
         # Combine all scene texts into one narration
@@ -171,7 +194,12 @@ Respond ONLY with the JSON array, no additional text."""
         logger.info(f"Voiceover saved to {voiceover_path}")
 
         # Step 4: Download stock video clips
-        self.update_progress("Finding and downloading stock footage...")
+        self.update_progress(
+            message="Finding and downloading stock footage...",
+            percentage=65,
+            current_step="Step 4 of 5: Downloading stock footage",
+            total_steps=5
+        )
         logger.info("Downloading stock videos from Pexels...")
 
         video_clips_paths = []
@@ -253,7 +281,12 @@ Respond ONLY with the JSON array, no additional text."""
         logger.info(f"Successfully downloaded {len(video_clips_paths)} video clips")
 
         # Step 5: Assemble the final video
-        self.update_progress("Assembling final video...")
+        self.update_progress(
+            message="Assembling final video...",
+            percentage=85,
+            current_step="Step 5 of 5: Assembling final video",
+            total_steps=5
+        )
         logger.info("Assembling video with MoviePy...")
 
         # Load all video clips
