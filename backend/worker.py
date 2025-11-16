@@ -134,7 +134,7 @@ def generate_video_task(self, url: str):
 
         script_prompt = f"""You are a video scriptwriter. Summarize the following article into a short video script. The script must be a JSON array of objects, where each object has two keys: 'scene_text' (a 1-2 sentence narration for that scene) and 'search_keyword' (a 2-3 word keyword for finding stock footage for that scene).
 
-Create 3-5 scenes that capture the key points of the article.
+Create EXACTLY 3 scenes that capture the key points of the article (not more, to keep the video short and memory-efficient).
 
 Example Response:
 [
@@ -312,8 +312,8 @@ Respond ONLY with the JSON array, no additional text."""
                 logger.info(f"Processing clip {idx + 1}/{len(video_clips_paths)}")
                 clip = VideoFileClip(video_path)
 
-                # Resize to lower resolution (480p) to save memory on free tier
-                clip = clip.resize(height=480)
+                # Resize to very low resolution (360p) to save memory on free tier (512MB limit)
+                clip = clip.resize(height=360)
 
                 # Trim clip to fit the scene duration
                 if clip.duration > duration_per_scene:
@@ -355,18 +355,20 @@ Respond ONLY with the JSON array, no additional text."""
 
         logger.info(f"Writing final video to {output_path}")
 
-        # Write the final video with optimized settings for free tier (512MB RAM limit)
+        # Write the final video with highly optimized settings for free tier (512MB RAM limit)
         final_video.write_videofile(
             str(output_path),
             codec="libx264",
             audio_codec="aac",
+            audio_bitrate='96k',  # Lower audio bitrate to save memory
             temp_audiofile=tempfile.NamedTemporaryFile(delete=False, suffix=".m4a").name,
             remove_temp=True,
-            fps=24,
+            fps=20,  # Lower FPS = less frames to process
             preset='ultrafast',  # Fastest encoding, less memory
-            threads=2,  # Fewer threads = less memory usage
-            bitrate='800k',  # Lower bitrate for smaller file size
-            logger=None  # Disable verbose logging to reduce overhead
+            threads=1,  # Single thread to minimize memory usage
+            bitrate='500k',  # Very low bitrate for smaller file size and less memory
+            logger=None,  # Disable verbose logging to reduce overhead
+            write_logfile=False  # Don't write log file
         )
 
         # Clean up MoviePy clips to free memory
