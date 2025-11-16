@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 # Third-party libraries
 from newspaper import Article
 from groq import Groq
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 from gtts import gTTS
 
 # Load environment variables
@@ -58,7 +58,7 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Pexels API configuration
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
-PEXELS_VIDEO_SEARCH_URL = "https://api.pexels.com/videos/search"
+PEXELS_PHOTO_SEARCH_URL = "https://api.pexels.com/v1/search"
 
 # Static directory for generated videos
 STATIC_DIR = Path(__file__).parent / "static"
@@ -224,7 +224,7 @@ Respond ONLY with the JSON array, no additional text."""
             keyword = scene["search_keyword"]
             logger.info(f"Searching Pexels for: {keyword}")
 
-            # Search Pexels for videos
+            # Search Pexels for photos (images use much less memory than videos)
             headers = {"Authorization": PEXELS_API_KEY}
             params = {
                 "query": keyword,
@@ -234,7 +234,7 @@ Respond ONLY with the JSON array, no additional text."""
 
             try:
                 pexels_response = requests.get(
-                    PEXELS_VIDEO_SEARCH_URL,
+                    PEXELS_PHOTO_SEARCH_URL,
                     headers=headers,
                     params=params,
                     timeout=10
@@ -242,59 +242,42 @@ Respond ONLY with the JSON array, no additional text."""
                 pexels_response.raise_for_status()
                 pexels_data = pexels_response.json()
 
-                if pexels_data.get("videos") and len(pexels_data["videos"]) > 0:
-                    # Get the first video
-                    video = pexels_data["videos"][0]
+                if pexels_data.get("photos") and len(pexels_data["photos"]) > 0:
+                    # Get the first photo
+                    photo = pexels_data["photos"][0]
 
-                    # Find a suitable video file (prefer smaller resolution for memory efficiency)
-                    video_file = None
-                    for file in video["video_files"]:
-                        # Prefer 640x360 or similar small resolutions for free tier
-                        if file.get("width", 0) <= 640 and file.get("height", 0) <= 360:
-                            video_file = file
-                            break
+                    # Use medium-sized image for optimal memory/quality balance
+                    image_url = photo["src"].get("large") or photo["src"].get("original")
 
-                    # Fallback to any SD quality file
-                    if not video_file:
-                        for file in video["video_files"]:
-                            if file.get("width", 0) <= 1280:
-                                video_file = file
-                                break
+                    if image_url:
+                        logger.info(f"Downloading image from: {image_url}")
 
-                    # Last resort: use any available file
-                    if not video_file and video["video_files"]:
-                        video_file = video["video_files"][0]
-
-                    if video_file:
-                        video_url = video_file["link"]
-                        logger.info(f"Downloading video from: {video_url}")
-
-                        # Download the video
-                        video_response = requests.get(video_url, timeout=30)
-                        video_response.raise_for_status()
+                        # Download the image
+                        image_response = requests.get(image_url, timeout=30)
+                        image_response.raise_for_status()
 
                         # Save to temporary file
-                        video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                        temp_files.append(video_path)
+                        image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                        temp_files.append(image_path)
 
-                        with open(video_path, 'wb') as f:
-                            f.write(video_response.content)
+                        with open(image_path, 'wb') as f:
+                            f.write(image_response.content)
 
-                        video_clips_paths.append(video_path)
-                        logger.info(f"Downloaded video {idx + 1}/{len(script_scenes)}")
+                        video_clips_paths.append(image_path)
+                        logger.info(f"Downloaded image {idx + 1}/{len(script_scenes)}")
                     else:
-                        logger.warning(f"No video file found for keyword: {keyword}")
+                        logger.warning(f"No image URL found for keyword: {keyword}")
                 else:
-                    logger.warning(f"No videos found for keyword: {keyword}")
+                    logger.warning(f"No photos found for keyword: {keyword}")
 
             except Exception as e:
-                logger.error(f"Error downloading video for '{keyword}': {str(e)}")
+                logger.error(f"Error downloading image for '{keyword}': {str(e)}")
                 # Continue even if one clip fails
 
         if len(video_clips_paths) == 0:
-            raise ValueError("Could not download any stock video clips. Please check your Pexels API key.")
+            raise ValueError("Could not download any stock images. Please check your Pexels API key.")
 
-        logger.info(f"Successfully downloaded {len(video_clips_paths)} video clips")
+        logger.info(f"Successfully downloaded {len(video_clips_paths)} images")
 
         # Step 5: Assemble the final video
         self.update_progress(
@@ -305,44 +288,22 @@ Respond ONLY with the JSON array, no additional text."""
         )
         logger.info("Assembling video with MoviePy...")
 
-        # Process clips one at a time to save memory (Render free tier has 512MB RAM)
+        # Process images one at a time to create slideshow (much less memory than videos)
         trimmed_clips = []
-        for idx, video_path in enumerate(video_clips_paths):
+        for idx, image_path in enumerate(video_clips_paths):
             try:
-                logger.info(f"Processing clip {idx + 1}/{len(video_clips_paths)}")
-                clip = VideoFileClip(video_path)
-
-                # Resize to minimal resolution (240p) to save maximum memory on free tier (512MB limit)
-                clip = clip.resize(height=240)
-
-                # Trim clip to fit the scene duration
-                if clip.duration > duration_per_scene:
-                    trimmed_clip = clip.subclip(0, duration_per_scene)
-                    clip.close()  # Close original clip to free memory
-                else:
-                    # If clip is shorter, loop it using clip.loop() method
-                    loops_needed = int(duration_per_scene / clip.duration) + 1
-                    looped = clip.loop(n=loops_needed)
-                    clip.close()  # Close original
-                    trimmed_clip = looped.subclip(0, duration_per_scene)
-                    looped.close()  # Close looped
-
-                trimmed_clips.append(trimmed_clip)
+                logger.info(f"Processing image {idx + 1}/{len(video_clips_paths)}")
+                # Create a clip from the static image with the scene duration
+                clip = ImageClip(image_path, duration=duration_per_scene)
+                trimmed_clips.append(clip)
             except Exception as e:
-                logger.error(f"Error loading video clip {video_path}: {str(e)}")
+                logger.error(f"Error loading image {image_path}: {str(e)}")
 
         if len(trimmed_clips) == 0:
-            raise ValueError("Could not load any video clips")
+            raise ValueError("Could not load any image clips")
 
-        # Concatenate all clips
+        # Concatenate all image clips to create slideshow
         visual_track = concatenate_videoclips(trimmed_clips, method="compose")
-
-        # Ensure visual track matches audio duration
-        if visual_track.duration > audio_duration:
-            visual_track = visual_track.subclip(0, audio_duration)
-        elif visual_track.duration < audio_duration:
-            # Extend by looping using clip.loop() method
-            visual_track = visual_track.loop().subclip(0, audio_duration)
 
         # Set the audio
         final_video = visual_track.set_audio(audio_clip)
