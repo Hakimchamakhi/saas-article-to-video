@@ -246,14 +246,22 @@ Respond ONLY with the JSON array, no additional text."""
                     # Get the first video
                     video = pexels_data["videos"][0]
 
-                    # Find a suitable video file (prefer HD)
+                    # Find a suitable video file (prefer smaller resolution for memory efficiency)
                     video_file = None
                     for file in video["video_files"]:
-                        if file.get("quality") == "hd" and file.get("width", 0) >= 1280:
+                        # Prefer 640x360 or similar small resolutions for free tier
+                        if file.get("width", 0) <= 640 and file.get("height", 0) <= 360:
                             video_file = file
                             break
 
-                    # Fallback to any available file
+                    # Fallback to any SD quality file
+                    if not video_file:
+                        for file in video["video_files"]:
+                            if file.get("width", 0) <= 1280:
+                                video_file = file
+                                break
+
+                    # Last resort: use any available file
                     if not video_file and video["video_files"]:
                         video_file = video["video_files"][0]
 
@@ -297,36 +305,35 @@ Respond ONLY with the JSON array, no additional text."""
         )
         logger.info("Assembling video with MoviePy...")
 
-        # Load all video clips
-        video_clips = []
-        for video_path in video_clips_paths:
+        # Process clips one at a time to save memory (Render free tier has 512MB RAM)
+        trimmed_clips = []
+        for idx, video_path in enumerate(video_clips_paths):
             try:
+                logger.info(f"Processing clip {idx + 1}/{len(video_clips_paths)}")
                 clip = VideoFileClip(video_path)
 
-                # Resize to consistent resolution (1280x720)
-                clip = clip.resize(height=720)
+                # Resize to lower resolution (480p) to save memory on free tier
+                clip = clip.resize(height=480)
 
-                video_clips.append(clip)
+                # Trim clip to fit the scene duration
+                if clip.duration > duration_per_scene:
+                    trimmed_clip = clip.subclip(0, duration_per_scene)
+                    clip.close()  # Close original clip to free memory
+                else:
+                    # If clip is shorter, loop it
+                    from moviepy.editor import loop
+                    loops_needed = int(duration_per_scene / clip.duration) + 1
+                    looped = loop(clip, n=loops_needed)
+                    clip.close()  # Close original
+                    trimmed_clip = looped.subclip(0, duration_per_scene)
+                    looped.close()  # Close looped
+
+                trimmed_clips.append(trimmed_clip)
             except Exception as e:
                 logger.error(f"Error loading video clip {video_path}: {str(e)}")
 
-        if len(video_clips) == 0:
+        if len(trimmed_clips) == 0:
             raise ValueError("Could not load any video clips")
-
-        # Trim each clip to fit the scene duration
-        trimmed_clips = []
-        for clip in video_clips:
-            # Make each clip match the duration per scene
-            if clip.duration > duration_per_scene:
-                trimmed_clip = clip.subclip(0, duration_per_scene)
-            else:
-                # If clip is shorter, loop it
-                from moviepy.editor import loop
-                loops_needed = int(duration_per_scene / clip.duration) + 1
-                looped = loop(clip, n=loops_needed)
-                trimmed_clip = looped.subclip(0, duration_per_scene)
-
-            trimmed_clips.append(trimmed_clip)
 
         # Concatenate all clips
         visual_track = concatenate_videoclips(trimmed_clips, method="compose")
@@ -348,7 +355,7 @@ Respond ONLY with the JSON array, no additional text."""
 
         logger.info(f"Writing final video to {output_path}")
 
-        # Write the final video
+        # Write the final video with optimized settings for free tier (512MB RAM limit)
         final_video.write_videofile(
             str(output_path),
             codec="libx264",
@@ -356,15 +363,15 @@ Respond ONLY with the JSON array, no additional text."""
             temp_audiofile=tempfile.NamedTemporaryFile(delete=False, suffix=".m4a").name,
             remove_temp=True,
             fps=24,
-            preset='medium',
-            threads=4
+            preset='ultrafast',  # Fastest encoding, less memory
+            threads=2,  # Fewer threads = less memory usage
+            bitrate='800k',  # Lower bitrate for smaller file size
+            logger=None  # Disable verbose logging to reduce overhead
         )
 
-        # Clean up MoviePy clips
+        # Clean up MoviePy clips to free memory
         audio_clip.close()
         for clip in trimmed_clips:
-            clip.close()
-        for clip in video_clips:
             clip.close()
         visual_track.close()
         final_video.close()
