@@ -1,0 +1,61 @@
+services:
+  # Backend API Service (FastAPI)
+  - type: web
+    name: blog-video-backend
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: blog-video-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+  # Celery Worker Service
+  - type: worker
+    name: blog-video-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && celery -A worker.celery_app worker --loglevel=info
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: blog-video-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+  # Frontend Static Site
+  - type: web
+    name: blog-video-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://blog-video-backend.onrender.com
+
+# Redis Instance
+  - type: redis
+    name: blog-video-redis
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
