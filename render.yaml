@@ -1,0 +1,74 @@
+services:
+  # Backend API (FastAPI) - FREE TIER
+  - type: web
+    name: blog-to-video-api
+    env: python
+    region: oregon # Free tier region
+    plan: free # FREE TIER
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: REDIS_URL
+        sync: false # You'll add this manually from external Redis provider
+      - key: OPENAI_API_KEY
+        sync: false # Add your OpenAI API key
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: web
+          name: blog-to-video-api
+          envVarKey: REDIS_URL
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: web
+          name: blog-to-video-api
+          envVarKey: REDIS_URL
+    healthCheckPath: /
+
+  # Celery Worker (Background Tasks) - FREE TIER
+  - type: worker
+    name: blog-to-video-worker
+    env: python
+    region: oregon # Free tier region
+    plan: free # FREE TIER
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && celery -A worker.celery_app worker --loglevel=info"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: REDIS_URL
+        sync: false # You'll add this manually from external Redis provider
+      - key: OPENAI_API_KEY
+        sync: false # Add your OpenAI API key
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: web
+          name: blog-to-video-api
+          envVarKey: REDIS_URL
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: web
+          name: blog-to-video-api
+          envVarKey: REDIS_URL
+
+  # Frontend (React/Vite) - FREE TIER
+  - type: web
+    name: blog-to-video-frontend
+    env: static
+    region: oregon # Free tier region
+    plan: free # FREE TIER
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: blog-to-video-api
+          property: url
