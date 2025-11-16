@@ -60,7 +60,6 @@ services:
   - type: web
     name: blog-to-video-frontend
     env: static
-    plan: free # FREE TIER
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: frontend/dist
     headers:
