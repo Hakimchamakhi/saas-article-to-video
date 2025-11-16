@@ -335,7 +335,7 @@ function App() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered</h3>
             <p className="text-gray-600 text-sm">
-              Advanced GPT technology summarizes your content into engaging video scripts
+              Groq's Llama 3.3 70B model summarizes your content into engaging video scripts
             </p>
           </div>
 
@@ -382,7 +382,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center text-gray-600 text-sm">
-          <p>Powered by OpenAI GPT-4, OpenAI TTS, Pexels, and MoviePy</p>
+          <p>Powered by Groq Llama 3.3, OpenAI TTS, Pexels, and MoviePy</p>
         </div>
       </div>
     </div>
