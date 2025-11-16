@@ -320,10 +320,9 @@ Respond ONLY with the JSON array, no additional text."""
                     trimmed_clip = clip.subclip(0, duration_per_scene)
                     clip.close()  # Close original clip to free memory
                 else:
-                    # If clip is shorter, loop it
-                    from moviepy.editor import loop
+                    # If clip is shorter, loop it using clip.loop() method
                     loops_needed = int(duration_per_scene / clip.duration) + 1
-                    looped = loop(clip, n=loops_needed)
+                    looped = clip.loop(n=loops_needed)
                     clip.close()  # Close original
                     trimmed_clip = looped.subclip(0, duration_per_scene)
                     looped.close()  # Close looped
@@ -342,9 +341,8 @@ Respond ONLY with the JSON array, no additional text."""
         if visual_track.duration > audio_duration:
             visual_track = visual_track.subclip(0, audio_duration)
         elif visual_track.duration < audio_duration:
-            # Extend the last frame to match
-            from moviepy.editor import loop
-            visual_track = loop(visual_track).subclip(0, audio_duration)
+            # Extend by looping using clip.loop() method
+            visual_track = visual_track.loop().subclip(0, audio_duration)
 
         # Set the audio
         final_video = visual_track.set_audio(audio_clip)
