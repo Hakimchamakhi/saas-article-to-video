@@ -442,7 +442,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center text-gray-600 text-sm">
-          <p>Powered by Groq AI (FREE), Edge TTS (FREE), Pexels (FREE), and MoviePy</p>
+          <p>Powered by Groq AI (FREE), Google TTS (FREE), Pexels (FREE), and MoviePy</p>
         </div>
       </div>
     </div>

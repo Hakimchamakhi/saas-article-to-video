@@ -17,8 +17,7 @@ from dotenv import load_dotenv
 from newspaper import Article
 from groq import Groq
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
-import asyncio
-import edge_tts
+from gtts import gTTS
 
 # Load environment variables
 load_dotenv()
@@ -125,7 +124,12 @@ def generate_video_task(self, url: str):
         logger.info(f"Successfully scraped article. Length: {len(article_text)} characters")
 
         # Step 2: Generate video script using Groq (FREE API)
-        self.update_progress("Generating video script with AI...")
+        self.update_progress(
+            message="Generating video script with AI...",
+            percentage=30,
+            current_step="Step 2 of 5: Generating script",
+            total_steps=5
+        )
         logger.info("Calling Groq API to generate script...")
 
         script_prompt = f"""You are a video scriptwriter. Summarize the following article into a short video script. The script must be a JSON array of objects, where each object has two keys: 'scene_text' (a 1-2 sentence narration for that scene) and 'search_keyword' (a 2-3 word keyword for finding stock footage for that scene).
@@ -175,27 +179,25 @@ Respond ONLY with the JSON array, no additional text."""
 
         logger.info(f"Generated script with {len(script_scenes)} scenes")
 
-        # Step 3: Generate voiceover using Edge TTS (FREE)
-        self.update_progress("Generating AI voiceover...")
-        logger.info("Generating voiceover with Edge TTS...")
+        # Step 3: Generate voiceover using Google TTS (FREE)
+        self.update_progress(
+            message="Generating AI voiceover...",
+            percentage=50,
+            current_step="Step 3 of 5: Creating voiceover",
+            total_steps=5
+        )
+        logger.info("Generating voiceover with Google TTS...")
 
         # Combine all scene texts into one narration
         full_narration = " ".join([scene["scene_text"] for scene in script_scenes])
 
-        # Generate TTS audio using Edge TTS
+        # Generate TTS audio using Google TTS
         voiceover_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
         temp_files.append(voiceover_path)
 
-        # Edge TTS is async, so we need to run it in an event loop
-        async def generate_tts():
-            communicate = edge_tts.Communicate(
-                full_narration,
-                voice="en-US-AriaNeural"  # Natural female voice, other options: en-US-GuyNeural, en-GB-SoniaNeural
-            )
-            await communicate.save(voiceover_path)
-
-        # Run the async function
-        asyncio.run(generate_tts())
+        # Create TTS object and save to file
+        tts = gTTS(text=full_narration, lang='en', slow=False)
+        tts.save(voiceover_path)
 
         logger.info(f"Voiceover saved to {voiceover_path}")
 
