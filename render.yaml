@@ -1,12 +1,12 @@
 services:
-  # Backend API (FastAPI) - FREE TIER
+  # Backend API + Celery Worker (Combined) - FREE TIER
   - type: web
     name: blog-to-video-api
     env: python
     region: oregon # Free tier region
     plan: free # FREE TIER
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    buildCommand: "pip install -r backend/requirements.txt && chmod +x backend/start.sh"
+    startCommand: "cd backend && ./start.sh"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -16,45 +16,7 @@ services:
         sync: false # Add your FREE Groq API key from https://console.groq.com/keys
       - key: PEXELS_API_KEY
         sync: false # Add your FREE Pexels API key from https://www.pexels.com/api/
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: web
-          name: blog-to-video-api
-          envVarKey: REDIS_URL
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: web
-          name: blog-to-video-api
-          envVarKey: REDIS_URL
     healthCheckPath: /
-
-  # Celery Worker (Background Tasks) - FREE TIER
-  - type: worker
-    name: blog-to-video-worker
-    env: python
-    region: oregon # Free tier region
-    plan: free # FREE TIER
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && celery -A worker.celery_app worker --loglevel=info"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: REDIS_URL
-        sync: false # You'll add this manually from external Redis provider
-      - key: GROQ_API_KEY
-        sync: false # Add your FREE Groq API key from https://console.groq.com/keys
-      - key: PEXELS_API_KEY
-        sync: false # Add your FREE Pexels API key from https://www.pexels.com/api/
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: web
-          name: blog-to-video-api
-          envVarKey: REDIS_URL
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: web
-          name: blog-to-video-api
-          envVarKey: REDIS_URL
 
   # Frontend (React/Vite) - FREE TIER
   - type: web

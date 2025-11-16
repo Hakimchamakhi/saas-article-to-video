@@ -5,10 +5,11 @@ This guide shows you how to deploy your Blog-to-Video application on Render usin
 ## Architecture Overview
 
 Your application will use these **FREE** services:
-- ✅ **Render Web Service** (FastAPI backend) - FREE
-- ✅ **Render Worker Service** (Celery background tasks) - FREE
+- ✅ **Render Web Service** (FastAPI backend + Celery worker combined) - FREE
 - ✅ **Render Static Site** (React frontend) - FREE
 - ✅ **External Redis** (Message broker) - FREE
+
+**Note**: Background workers are a paid Render feature, so we run the Celery worker alongside the web service in the same container to stay 100% FREE!
 
 ## Prerequisites
 
@@ -99,38 +100,31 @@ git push -u origin main
 3. Click **"New +"** → **"Blueprint"**
 4. Connect your GitHub repository
 5. Select your repository
-6. Render will detect `render.yaml` and show 3 services:
-   - `blog-to-video-api` (Web Service)
-   - `blog-to-video-worker` (Background Worker)
+6. Render will detect `render.yaml` and show 2 services:
+   - `blog-to-video-api` (Web Service - runs both API and Celery worker)
    - `blog-to-video-frontend` (Static Site)
 
 ### Option B: Manual Setup
 
 If you prefer manual setup, create each service:
 
-#### 1. Backend API (Web Service)
+#### 1. Backend API + Celery Worker (Web Service)
 - Type: **Web Service**
 - Environment: **Python**
-- Build Command: `pip install -r backend/requirements.txt`
-- Start Command: `cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Build Command: `pip install -r backend/requirements.txt && chmod +x backend/start.sh`
+- Start Command: `cd backend && ./start.sh`
 - Plan: **Free**
+- Note: This runs both the FastAPI server AND Celery worker in the same container
 
-#### 2. Celery Worker (Background Worker)
-- Type: **Background Worker**
-- Environment: **Python**
-- Build Command: `pip install -r backend/requirements.txt`
-- Start Command: `cd backend && celery -A worker.celery_app worker --loglevel=info`
-- Plan: **Free**
-
-#### 3. Frontend (Static Site)
+#### 2. Frontend (Static Site)
 - Type: **Static Site**
 - Build Command: `cd frontend && npm install && npm run build`
 - Publish Directory: `frontend/dist`
-- Plan: **Free**
+- Note: Static sites are always free on Render
 
 ## Step 5: Configure Environment Variables
 
-For **both** the backend API and worker services, add these environment variables:
+For the **backend service** (`blog-to-video-api`), add these environment variables:
 
 ### Required Variables:
 
@@ -231,8 +225,7 @@ But for testing and moderate use, **FREE tier works great**! 🚀
 
 | Service | Cost |
 |---------|------|
-| Render Web Service (API) | **FREE** |
-| Render Worker Service | **FREE** |
+| Render Web Service (API + Worker) | **FREE** |
 | Render Static Site (Frontend) | **FREE** |
 | Redis (Upstash/Railway) | **FREE** |
 | Groq AI (LLM) | **FREE** ✨ |
