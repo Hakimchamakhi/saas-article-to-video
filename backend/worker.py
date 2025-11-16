@@ -1,0 +1,353 @@
+"""
+Celery Worker for Blog-to-Video Conversion
+Handles the async video generation task with all processing steps.
+"""
+from celery import Celery, Task
+from celery.utils.log import get_task_logger
+import os
+import json
+import requests
+import tempfile
+import random
+import string
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Third-party libraries
+from newspaper import Article
+from openai import OpenAI
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+
+# Load environment variables
+load_dotenv()
+
+# Configure Celery
+celery_app = Celery(
+    "video_generator",
+    broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+    backend=os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
+
+celery_app.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    task_track_started=True,
+)
+
+logger = get_task_logger(__name__)
+
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Pexels API configuration
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
+PEXELS_VIDEO_SEARCH_URL = "https://api.pexels.com/videos/search"
+
+# Static directory for generated videos
+STATIC_DIR = Path(__file__).parent / "static"
+STATIC_DIR.mkdir(exist_ok=True)
+
+
+def generate_random_filename():
+    """Generate a random filename for the output video"""
+    random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return f"video_{random_str}.mp4"
+
+
+class VideoGenerationTask(Task):
+    """Custom task class with progress tracking"""
+
+    def update_progress(self, message):
+        """Update task progress"""
+        logger.info(message)
+        self.update_state(state='PROGRESS', meta={'progress': message})
+
+
+@celery_app.task(bind=True, base=VideoGenerationTask, name="generate_video_task")
+def generate_video_task(self, url: str):
+    """
+    Main task to generate a video from a blog article URL.
+
+    Steps:
+    1. Scrape the article text
+    2. Generate a video script using OpenAI GPT
+    3. Generate voiceover using OpenAI TTS
+    4. Download stock video clips from Pexels
+    5. Assemble the final video with MoviePy
+    6. Return the video URL
+    """
+    temp_files = []  # Track temporary files for cleanup
+
+    try:
+        # Step 1: Scrape the article
+        self.update_progress("Scraping article content...")
+        logger.info(f"Scraping article from URL: {url}")
+
+        article = Article(url)
+        article.download()
+        article.parse()
+        article_text = article.text
+
+        if not article_text or len(article_text) < 100:
+            raise ValueError("Article text is too short or empty. Please provide a valid article URL.")
+
+        logger.info(f"Successfully scraped article. Length: {len(article_text)} characters")
+
+        # Step 2: Generate video script using OpenAI GPT
+        self.update_progress("Generating video script with AI...")
+        logger.info("Calling OpenAI API to generate script...")
+
+        script_prompt = f"""You are a video scriptwriter. Summarize the following article into a short video script. The script must be a JSON array of objects, where each object has two keys: 'scene_text' (a 1-2 sentence narration for that scene) and 'search_keyword' (a 2-3 word keyword for finding stock footage for that scene).
+
+Create 3-5 scenes that capture the key points of the article.
+
+Example Response:
+[
+  {{"scene_text": "A new study reveals that honeybees are communicating in complex new ways.", "search_keyword": "honeybees flying"}},
+  {{"scene_text": "Researchers found they use a 'waggle dance' to describe food locations with pinpoint accuracy.", "search_keyword": "bee dance research"}}
+]
+
+Article Text:
+{article_text[:4000]}
+
+Respond ONLY with the JSON array, no additional text."""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a professional video scriptwriter. Always respond with valid JSON only."},
+                {"role": "user", "content": script_prompt}
+            ],
+            temperature=0.7,
+        )
+
+        script_text = response.choices[0].message.content.strip()
+
+        # Clean up markdown code blocks if present
+        if script_text.startswith("```json"):
+            script_text = script_text[7:]
+        if script_text.startswith("```"):
+            script_text = script_text[3:]
+        if script_text.endswith("```"):
+            script_text = script_text[:-3]
+        script_text = script_text.strip()
+
+        # Parse the JSON script
+        try:
+            script_scenes = json.loads(script_text)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse script JSON: {script_text}")
+            raise ValueError(f"OpenAI returned invalid JSON: {str(e)}")
+
+        if not isinstance(script_scenes, list) or len(script_scenes) == 0:
+            raise ValueError("Script must be a non-empty array of scenes")
+
+        logger.info(f"Generated script with {len(script_scenes)} scenes")
+
+        # Step 3: Generate voiceover using OpenAI TTS
+        self.update_progress("Generating AI voiceover...")
+        logger.info("Generating voiceover with OpenAI TTS...")
+
+        # Combine all scene texts into one narration
+        full_narration = " ".join([scene["scene_text"] for scene in script_scenes])
+
+        # Generate TTS audio
+        tts_response = openai_client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",  # Options: alloy, echo, fable, onyx, nova, shimmer
+            input=full_narration
+        )
+
+        # Save voiceover to temporary file
+        voiceover_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+        temp_files.append(voiceover_path)
+
+        with open(voiceover_path, 'wb') as f:
+            f.write(tts_response.content)
+
+        logger.info(f"Voiceover saved to {voiceover_path}")
+
+        # Step 4: Download stock video clips
+        self.update_progress("Finding and downloading stock footage...")
+        logger.info("Downloading stock videos from Pexels...")
+
+        video_clips_paths = []
+
+        # Load voiceover to get duration
+        audio_clip = AudioFileClip(voiceover_path)
+        audio_duration = audio_clip.duration
+        logger.info(f"Audio duration: {audio_duration} seconds")
+
+        # Calculate duration per scene
+        duration_per_scene = audio_duration / len(script_scenes)
+
+        for idx, scene in enumerate(script_scenes):
+            keyword = scene["search_keyword"]
+            logger.info(f"Searching Pexels for: {keyword}")
+
+            # Search Pexels for videos
+            headers = {"Authorization": PEXELS_API_KEY}
+            params = {
+                "query": keyword,
+                "per_page": 5,
+                "orientation": "landscape"
+            }
+
+            try:
+                pexels_response = requests.get(
+                    PEXELS_VIDEO_SEARCH_URL,
+                    headers=headers,
+                    params=params,
+                    timeout=10
+                )
+                pexels_response.raise_for_status()
+                pexels_data = pexels_response.json()
+
+                if pexels_data.get("videos") and len(pexels_data["videos"]) > 0:
+                    # Get the first video
+                    video = pexels_data["videos"][0]
+
+                    # Find a suitable video file (prefer HD)
+                    video_file = None
+                    for file in video["video_files"]:
+                        if file.get("quality") == "hd" and file.get("width", 0) >= 1280:
+                            video_file = file
+                            break
+
+                    # Fallback to any available file
+                    if not video_file and video["video_files"]:
+                        video_file = video["video_files"][0]
+
+                    if video_file:
+                        video_url = video_file["link"]
+                        logger.info(f"Downloading video from: {video_url}")
+
+                        # Download the video
+                        video_response = requests.get(video_url, timeout=30)
+                        video_response.raise_for_status()
+
+                        # Save to temporary file
+                        video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+                        temp_files.append(video_path)
+
+                        with open(video_path, 'wb') as f:
+                            f.write(video_response.content)
+
+                        video_clips_paths.append(video_path)
+                        logger.info(f"Downloaded video {idx + 1}/{len(script_scenes)}")
+                    else:
+                        logger.warning(f"No video file found for keyword: {keyword}")
+                else:
+                    logger.warning(f"No videos found for keyword: {keyword}")
+
+            except Exception as e:
+                logger.error(f"Error downloading video for '{keyword}': {str(e)}")
+                # Continue even if one clip fails
+
+        if len(video_clips_paths) == 0:
+            raise ValueError("Could not download any stock video clips. Please check your Pexels API key.")
+
+        logger.info(f"Successfully downloaded {len(video_clips_paths)} video clips")
+
+        # Step 5: Assemble the final video
+        self.update_progress("Assembling final video...")
+        logger.info("Assembling video with MoviePy...")
+
+        # Load all video clips
+        video_clips = []
+        for video_path in video_clips_paths:
+            try:
+                clip = VideoFileClip(video_path)
+
+                # Resize to consistent resolution (1280x720)
+                clip = clip.resize(height=720)
+
+                video_clips.append(clip)
+            except Exception as e:
+                logger.error(f"Error loading video clip {video_path}: {str(e)}")
+
+        if len(video_clips) == 0:
+            raise ValueError("Could not load any video clips")
+
+        # Trim each clip to fit the scene duration
+        trimmed_clips = []
+        for clip in video_clips:
+            # Make each clip match the duration per scene
+            if clip.duration > duration_per_scene:
+                trimmed_clip = clip.subclip(0, duration_per_scene)
+            else:
+                # If clip is shorter, loop it
+                from moviepy.editor import loop
+                loops_needed = int(duration_per_scene / clip.duration) + 1
+                looped = loop(clip, n=loops_needed)
+                trimmed_clip = looped.subclip(0, duration_per_scene)
+
+            trimmed_clips.append(trimmed_clip)
+
+        # Concatenate all clips
+        visual_track = concatenate_videoclips(trimmed_clips, method="compose")
+
+        # Ensure visual track matches audio duration
+        if visual_track.duration > audio_duration:
+            visual_track = visual_track.subclip(0, audio_duration)
+        elif visual_track.duration < audio_duration:
+            # Extend the last frame to match
+            from moviepy.editor import loop
+            visual_track = loop(visual_track).subclip(0, audio_duration)
+
+        # Set the audio
+        final_video = visual_track.set_audio(audio_clip)
+
+        # Generate output filename
+        output_filename = generate_random_filename()
+        output_path = STATIC_DIR / output_filename
+
+        logger.info(f"Writing final video to {output_path}")
+
+        # Write the final video
+        final_video.write_videofile(
+            str(output_path),
+            codec="libx264",
+            audio_codec="aac",
+            temp_audiofile=tempfile.NamedTemporaryFile(delete=False, suffix=".m4a").name,
+            remove_temp=True,
+            fps=24,
+            preset='medium',
+            threads=4
+        )
+
+        # Clean up MoviePy clips
+        audio_clip.close()
+        for clip in trimmed_clips:
+            clip.close()
+        for clip in video_clips:
+            clip.close()
+        visual_track.close()
+        final_video.close()
+
+        logger.info(f"Video generation complete: {output_filename}")
+
+        # Return success result
+        return {
+            "status": "success",
+            "video_filename": output_filename,
+            "message": "Video generated successfully"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in video generation task: {str(e)}", exc_info=True)
+        # Re-raise the exception so Celery marks the task as FAILED
+        raise
+
+    finally:
+        # Clean up temporary files
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logger.info(f"Cleaned up temporary file: {temp_file}")
+            except Exception as e:
+                logger.warning(f"Could not delete temporary file {temp_file}: {str(e)}")
