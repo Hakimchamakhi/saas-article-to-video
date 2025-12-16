@@ -17,7 +17,7 @@ from moviepy.editor import (
 # Default background music URL (royalty-free ambient track)
 # This is a short ambient loop from a public source (Pixabay-style free music)
 # You can replace this with any other royalty-free MP3 URL
-DEFAULT_MUSIC_URL = "https://cdn.pixabay.com/audio/2024/02/28/audio_63e9ca8a87.mp3"
+DEFAULT_MUSIC_URL = "https://github.com/rafaelreis-hotmart/Audio-Sample-files/raw/master/sample.mp3"
 # Alternative: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
 
 STATIC_DIR = Path(__file__).parent / "static"
