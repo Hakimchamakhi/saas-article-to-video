@@ -15,8 +15,9 @@ lxml_html_clean==0.1.1
 # AI Integration (FREE APIs)
 groq==0.14.0
 
-# Text-to-Speech (FREE - Neural Voices)
+# Text-to-Speech (FREE - Neural Voices with fallback)
 edge-tts==6.1.9
+gTTS==2.5.0
 
 # Video Processing
 moviepy==1.0.3

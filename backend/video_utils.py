@@ -79,9 +79,45 @@ def generate_voiceover_sync(
     voice: str = "en-US-ChristopherNeural"
 ) -> str:
     """
-    Synchronous wrapper for edge-tts generation (for use in Celery).
+    Generate voiceover with edge-tts (neural voice), falling back to gTTS if blocked.
+    
+    Edge TTS may get 403 errors on cloud platforms (Railway, Render, etc.) because
+    Microsoft blocks requests from data center IPs. In that case, we fall back to gTTS.
+    
+    Args:
+        text: The text to convert to speech
+        output_path: Path to save the audio file
+        voice: Voice ID for edge-tts (ignored if falling back to gTTS)
+    
+    Returns:
+        Path to the generated audio file
     """
-    return asyncio.run(generate_voiceover_edge_tts(text, output_path, voice))
+    # Try edge-tts first (better quality neural voice)
+    try:
+        print(f"Attempting edge-tts with voice: {voice}")
+        asyncio.run(generate_voiceover_edge_tts(text, output_path, voice))
+        print("Edge TTS successful!")
+        return output_path
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Edge TTS failed: {error_msg}")
+        
+        # Check if it's a 403 error (blocked by Microsoft)
+        if "403" in error_msg or "WSServerHandshakeError" in error_msg:
+            print("Edge TTS blocked (403). Falling back to gTTS...")
+        else:
+            print(f"Edge TTS error: {e}. Falling back to gTTS...")
+        
+        # Fallback to gTTS (still free, works everywhere, but less natural)
+        try:
+            from gtts import gTTS
+            tts = gTTS(text=text, lang='en', slow=False)
+            tts.save(output_path)
+            print("gTTS fallback successful!")
+            return output_path
+        except Exception as gtts_error:
+            print(f"gTTS also failed: {gtts_error}")
+            raise RuntimeError(f"All TTS methods failed. Edge: {e}, gTTS: {gtts_error}")
 
 
 def apply_ken_burns_effect(
