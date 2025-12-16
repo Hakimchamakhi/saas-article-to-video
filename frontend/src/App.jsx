@@ -55,7 +55,16 @@ function App() {
           pollingIntervalRef.current = null
         }
 
-        setVideoUrl(data.video_url)
+        // --- FIX STARTS HERE ---
+        // Construct the full URL using the Environment Variable
+        // If we are in production (VITE_API_URL exists), prepend it.
+        // If we are local (VITE_API_URL is empty), use the relative path (proxy handles it).
+        const fullVideoUrl = import.meta.env.VITE_API_URL 
+          ? `${import.meta.env.VITE_API_URL}${data.video_url}`
+          : data.video_url
+
+        setVideoUrl(fullVideoUrl)
+        // --- FIX ENDS HERE ---
         setIsProcessing(false)
         setError(null)
       } else if (data.status === 'failed') {
