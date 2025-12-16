@@ -16,8 +16,18 @@ from dotenv import load_dotenv
 # Third-party libraries
 from newspaper import Article
 from groq import Groq
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
-from gtts import gTTS
+from moviepy.editor import AudioFileClip, CompositeVideoClip, concatenate_videoclips
+
+# Local utilities
+from video_utils import (
+    generate_voiceover_sync,
+    apply_ken_burns_effect,
+    create_subtitle_clip,
+    mix_audio_with_music,
+    ensure_background_music,
+    get_video_dimensions,
+    get_pexels_orientation
+)
 
 # Load environment variables
 load_dotenv()
@@ -89,16 +99,20 @@ class VideoGenerationTask(Task):
 
 
 @celery_app.task(bind=True, base=VideoGenerationTask, name="generate_video_task")
-def generate_video_task(self, url: str):
+def generate_video_task(self, url: str, video_format: str = "landscape"):
     """
     Main task to generate a video from a blog article URL.
 
+    Args:
+        url: The blog article URL to convert
+        video_format: 'landscape' (YouTube 16:9) or 'portrait' (TikTok 9:16)
+
     Steps:
     1. Scrape the article text
-    2. Generate a video script using OpenAI GPT
-    3. Generate voiceover using OpenAI TTS
-    4. Download stock video clips from Pexels
-    5. Assemble the final video with MoviePy
+    2. Generate a video script using AI (Groq)
+    3. Generate voiceover using Edge TTS (neural voices)
+    4. Download stock images from Pexels
+    5. Assemble final video with Ken Burns effect, subtitles, and background music
     6. Return the video URL
     """
     temp_files = []  # Track temporary files for cleanup
@@ -179,25 +193,28 @@ Respond ONLY with the JSON array, no additional text."""
 
         logger.info(f"Generated script with {len(script_scenes)} scenes")
 
-        # Step 3: Generate voiceover using Google TTS (FREE)
+        # Step 3: Generate voiceover using Edge TTS (FREE Neural Voices)
         self.update_progress(
             message="Generating AI voiceover...",
             percentage=50,
             current_step="Step 3 of 5: Creating voiceover",
             total_steps=5
         )
-        logger.info("Generating voiceover with Google TTS...")
+        logger.info("Generating voiceover with Edge TTS (neural voice)...")
 
         # Combine all scene texts into one narration
         full_narration = " ".join([scene["scene_text"] for scene in script_scenes])
 
-        # Generate TTS audio using Google TTS
+        # Generate TTS audio using Edge TTS (human-like neural voice)
         voiceover_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
         temp_files.append(voiceover_path)
 
-        # Create TTS object and save to file
-        tts = gTTS(text=full_narration, lang='en', slow=False)
-        tts.save(voiceover_path)
+        # Use Microsoft Edge neural voice
+        generate_voiceover_sync(
+            text=full_narration,
+            output_path=voiceover_path,
+            voice="en-US-ChristopherNeural"  # Male neural voice
+        )
 
         logger.info(f"Voiceover saved to {voiceover_path}")
 
@@ -220,6 +237,11 @@ Respond ONLY with the JSON array, no additional text."""
         # Calculate duration per scene
         duration_per_scene = audio_duration / len(script_scenes)
 
+        # Get orientation based on video format
+        pexels_orientation = get_pexels_orientation(video_format)
+        video_dimensions = get_video_dimensions(video_format)
+        logger.info(f"Video format: {video_format}, dimensions: {video_dimensions}")
+
         for idx, scene in enumerate(script_scenes):
             keyword = scene["search_keyword"]
             logger.info(f"Searching Pexels for: {keyword}")
@@ -229,7 +251,7 @@ Respond ONLY with the JSON array, no additional text."""
             params = {
                 "query": keyword,
                 "per_page": 5,
-                "orientation": "landscape"
+                "orientation": pexels_orientation
             }
 
             try:
@@ -288,25 +310,73 @@ Respond ONLY with the JSON array, no additional text."""
         )
         logger.info("Assembling video with MoviePy...")
 
-        # Process images one at a time to create slideshow (much less memory than videos)
-        trimmed_clips = []
+        # Ken Burns effect types to randomly apply
+        ken_burns_effects = ["zoom_in", "zoom_out", "pan_left", "pan_right"]
+
+        # Process images with Ken Burns effect and subtitles
+        scene_clips = []
         for idx, image_path in enumerate(video_clips_paths):
             try:
-                logger.info(f"Processing image {idx + 1}/{len(video_clips_paths)}")
-                # Create a clip from the static image with the scene duration
-                clip = ImageClip(image_path, duration=duration_per_scene)
-                trimmed_clips.append(clip)
+                logger.info(f"Processing image {idx + 1}/{len(video_clips_paths)} with Ken Burns effect")
+                
+                # Apply random Ken Burns effect
+                effect_type = random.choice(ken_burns_effects)
+                clip = apply_ken_burns_effect(
+                    image_path=image_path,
+                    duration=duration_per_scene,
+                    target_size=video_dimensions,
+                    effect_type=effect_type
+                )
+                
+                # Create subtitle for this scene
+                scene_text = script_scenes[idx]["scene_text"] if idx < len(script_scenes) else ""
+                if scene_text:
+                    subtitle = create_subtitle_clip(
+                        text=scene_text,
+                        duration=duration_per_scene,
+                        video_size=video_dimensions,
+                        font_size=36 if video_format == "portrait" else 40
+                    )
+                    # Composite the subtitle over the image
+                    clip = CompositeVideoClip([clip, subtitle])
+                
+                scene_clips.append(clip)
             except Exception as e:
-                logger.error(f"Error loading image {image_path}: {str(e)}")
+                logger.error(f"Error processing image {image_path}: {str(e)}")
 
-        if len(trimmed_clips) == 0:
-            raise ValueError("Could not load any image clips")
+        if len(scene_clips) == 0:
+            raise ValueError("Could not process any image clips")
 
-        # Concatenate all image clips to create slideshow
-        visual_track = concatenate_videoclips(trimmed_clips, method="compose")
+        # Concatenate all scene clips
+        visual_track = concatenate_videoclips(scene_clips, method="compose")
 
-        # Set the audio
-        final_video = visual_track.set_audio(audio_clip)
+        # Mix voiceover with background music (if available)
+        final_audio_path = voiceover_path
+        music_path = ensure_background_music()
+        
+        if music_path and music_path.exists():
+            logger.info("Mixing voiceover with background music...")
+            try:
+                mixed_audio_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                temp_files.append(mixed_audio_path)
+                
+                mix_audio_with_music(
+                    voiceover_path=voiceover_path,
+                    music_path=str(music_path),
+                    output_path=mixed_audio_path,
+                    music_volume=0.12,
+                    duck_volume=0.05
+                )
+                final_audio_path = mixed_audio_path
+                logger.info("Audio mixed successfully")
+            except Exception as e:
+                logger.warning(f"Could not mix background music: {e}. Using voiceover only.")
+        else:
+            logger.info("No background music available, using voiceover only")
+
+        # Set the final audio
+        final_audio = AudioFileClip(final_audio_path)
+        final_video = visual_track.set_audio(final_audio)
 
         # Generate output filename
         output_filename = generate_random_filename()
@@ -332,7 +402,8 @@ Respond ONLY with the JSON array, no additional text."""
 
         # Clean up MoviePy clips to free memory
         audio_clip.close()
-        for clip in trimmed_clips:
+        final_audio.close()
+        for clip in scene_clips:
             clip.close()
         visual_track.close()
         final_video.close()

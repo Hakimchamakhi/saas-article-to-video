@@ -6,7 +6,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
+from typing import Literal
 from celery.result import AsyncResult
 import os
 from pathlib import Path
@@ -31,6 +32,10 @@ STATIC_DIR.mkdir(exist_ok=True)
 # Request/Response Models
 class VideoGenerationRequest(BaseModel):
     url: HttpUrl
+    video_format: Literal["landscape", "portrait"] = Field(
+        default="landscape",
+        description="Video format: 'landscape' for YouTube (16:9) or 'portrait' for TikTok/Shorts (9:16)"
+    )
 
 
 class VideoGenerationResponse(BaseModel):
@@ -62,9 +67,10 @@ async def generate_video(request: VideoGenerationRequest):
     try:
         # Convert HttpUrl to string
         url = str(request.url)
+        video_format = request.video_format
 
-        # Dispatch the Celery task
-        task = generate_video_task.delay(url)
+        # Dispatch the Celery task with video format
+        task = generate_video_task.delay(url, video_format)
 
         return VideoGenerationResponse(job_id=task.id)
     except Exception as e:

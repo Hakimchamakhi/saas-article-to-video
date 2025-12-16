@@ -8,6 +8,7 @@ const POLL_INTERVAL = 5000 // Poll every 5 seconds
 
 function App() {
   const [url, setUrl] = useState('')
+  const [videoFormat, setVideoFormat] = useState('landscape')
   const [isProcessing, setIsProcessing] = useState(false)
   const [jobId, setJobId] = useState(null)
   const [status, setStatus] = useState(null)
@@ -59,7 +60,7 @@ function App() {
         // Construct the full URL using the Environment Variable
         // If we are in production (VITE_API_URL exists), prepend it.
         // If we are local (VITE_API_URL is empty), use the relative path (proxy handles it).
-        const fullVideoUrl = import.meta.env.VITE_API_URL 
+        const fullVideoUrl = import.meta.env.VITE_API_URL
           ? `${import.meta.env.VITE_API_URL}${data.video_url}`
           : data.video_url
 
@@ -128,7 +129,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), video_format: videoFormat }),
       })
 
       if (!response.ok) {
@@ -166,6 +167,7 @@ function App() {
 
   const handleReset = () => {
     setUrl('')
+    setVideoFormat('landscape')
     setJobId(null)
     setStatus(null)
     setError(null)
@@ -221,6 +223,36 @@ function App() {
                   >
                     {isProcessing ? 'Processing...' : 'Generate Video'}
                   </button>
+                </div>
+
+                {/* Video Format Selector */}
+                <div className="mb-6">
+                  <label htmlFor="format-select" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Video Format
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="format-select"
+                      value={videoFormat}
+                      onChange={(e) => setVideoFormat(e.target.value)}
+                      disabled={isProcessing}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 appearance-none bg-white cursor-pointer"
+                    >
+                      <option value="landscape">📺 YouTube (16:9) - Landscape</option>
+                      <option value="portrait">📱 TikTok / Shorts (9:16) - Portrait</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                      <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {videoFormat === 'landscape'
+                      ? 'Best for YouTube, Facebook, and desktop viewing (1920×1080)'
+                      : 'Best for TikTok, Instagram Reels, and YouTube Shorts (1080×1920)'
+                    }
+                  </p>
                 </div>
               </form>
 
@@ -449,9 +481,8 @@ function App() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-center text-gray-600 text-sm">
-          <p>Powered by Groq AI (FREE), Google TTS (FREE), Pexels (FREE), and MoviePy</p>
+          <p>Powered by Groq AI (FREE), Edge TTS Neural Voices (FREE), Pexels (FREE), and MoviePy</p>
         </div>
       </div>
     </div>
