@@ -16,7 +16,8 @@ lxml_html_clean==0.1.1
 groq==0.14.0
 
 # Text-to-Speech (FREE - Neural Voices with fallback)
-edge-tts==6.1.9
+edge-tts
+
 gTTS==2.5.0
 
 # Video Processing

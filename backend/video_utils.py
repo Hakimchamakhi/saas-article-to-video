@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from moviepy.editor import (
     ImageClip, AudioFileClip, CompositeAudioClip, 
-    concatenate_audioclips, CompositeVideoClip
+    concatenate_audioclips, CompositeVideoClip, VideoClip
 )
 
 # Default background music URL (royalty-free ambient track)
@@ -224,8 +224,8 @@ def apply_ken_burns_effect(
         
         return np.array(resized)
     
-    # Create clip with the frame generator
-    clip = ImageClip(make_frame, duration=duration)
+    # Create clip with the frame generator - must use VideoClip for animated frames
+    clip = VideoClip(make_frame, duration=duration)
     clip = clip.set_fps(20)  # Match the output FPS
     
     return clip
