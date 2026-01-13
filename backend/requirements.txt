@@ -12,8 +12,9 @@ newspaper3k==0.2.8
 lxml==4.9.3
 lxml_html_clean==0.1.1
 
-# OpenAI Integration
+# LLM Integration
 openai==1.10.0
+groq==0.4.2
 
 # Video Processing
 moviepy==1.0.3

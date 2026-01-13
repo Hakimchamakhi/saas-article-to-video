@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 # Third-party libraries
 from newspaper import Article
 from openai import OpenAI
+from groq import Groq
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 
 # Load environment variables
@@ -39,7 +40,10 @@ celery_app.conf.update(
 
 logger = get_task_logger(__name__)
 
-# Initialize OpenAI client
+# Initialize Groq client for LLM (script generation)
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# Initialize OpenAI client for TTS (text-to-speech)
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Pexels API configuration
@@ -115,8 +119,8 @@ Article Text:
 
 Respond ONLY with the JSON array, no additional text."""
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4",
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a professional video scriptwriter. Always respond with valid JSON only."},
                 {"role": "user", "content": script_prompt}

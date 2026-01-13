@@ -4,7 +4,7 @@ A full-stack web application that automatically converts blog articles into enga
 
 ## Features
 
-- **AI-Powered Script Generation**: Uses OpenAI GPT-4 to summarize articles into video scripts
+- **AI-Powered Script Generation**: Uses Groq's Llama 3.3 70B model to summarize articles into video scripts
 - **Professional Voiceover**: Leverages OpenAI's TTS (Text-to-Speech) for natural-sounding narration
 - **Automatic Stock Footage**: Finds and integrates relevant stock videos from Pexels
 - **Asynchronous Processing**: Uses Celery and Redis for efficient background task processing
@@ -17,7 +17,8 @@ A full-stack web application that automatically converts blog articles into enga
 - **FastAPI**: Modern, fast web framework for Python
 - **Celery**: Distributed task queue for async processing
 - **Redis**: Message broker and result backend
-- **OpenAI API**: GPT-4 for summarization and TTS for voiceover
+- **Groq API**: Llama 3.3 70B for script generation
+- **OpenAI API**: TTS for voiceover
 - **Pexels API**: Stock video footage
 - **MoviePy**: Video editing and assembly
 - **Newspaper3k**: Article scraping and parsing
@@ -83,12 +84,17 @@ sudo apt install python3 python3-pip nodejs npm redis-server ffmpeg
 
 You'll need to obtain API keys for the following services:
 
-1. **OpenAI API Key**
+1. **Groq API Key**
+   - Sign up at [Groq Console](https://console.groq.com/)
+   - Create an API key at [API Keys](https://console.groq.com/keys)
+   - The API is free with generous rate limits
+
+2. **OpenAI API Key**
    - Sign up at [OpenAI Platform](https://platform.openai.com/)
    - Create an API key at [API Keys](https://platform.openai.com/api-keys)
-   - Ensure you have credits available for GPT-4 and TTS API usage
+   - Ensure you have credits available for TTS API usage
 
-2. **Pexels API Key**
+3. **Pexels API Key**
    - Sign up at [Pexels](https://www.pexels.com/)
    - Get your API key at [Pexels API](https://www.pexels.com/api/)
    - The API is free for non-commercial use
@@ -124,6 +130,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Edit .env and add your API keys
+# GROQ_API_KEY=your_groq_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here
 # PEXELS_API_KEY=your_pexels_api_key_here
 # REDIS_URL=redis://localhost:6379/0
@@ -216,7 +223,7 @@ The frontend will be available at `http://localhost:3000`
 3. **Status Polling**: Frontend polls the status endpoint every 5 seconds
 4. **Background Processing**: Celery worker executes the video generation pipeline:
    - Scrapes article text using Newspaper3k
-   - Summarizes content into a video script using GPT-4
+   - Summarizes content into a video script using Groq's Llama 3.3 70B
    - Generates voiceover using OpenAI TTS
    - Searches and downloads stock videos from Pexels
    - Assembles video clips with audio using MoviePy
@@ -277,18 +284,18 @@ For production deployment, consider:
 
 ### API Usage Costs (Approximate)
 
-- **OpenAI GPT-4**: ~$0.03 per video (script generation)
+- **Groq (Llama 3.3 70B)**: Free with rate limits (very fast inference)
 - **OpenAI TTS**: ~$0.015 per 1000 characters (~$0.05 per video)
 - **Pexels**: Free (with attribution for commercial use)
 
-**Estimated cost per video**: $0.08 - $0.15
+**Estimated cost per video**: $0.05 - $0.08
 
 ### Cost Optimization Tips
 
-- Use GPT-3.5-turbo instead of GPT-4 for script generation (significantly cheaper)
+- Groq provides free API access with generous rate limits
 - Cache API responses when possible
 - Implement rate limiting to prevent abuse
-- Set up billing alerts in OpenAI dashboard
+- Monitor Groq rate limits at [console.groq.com](https://console.groq.com)
 
 ## Limitations
 
@@ -319,7 +326,8 @@ For issues, questions, or contributions, please open an issue on the GitHub repo
 
 ## Credits
 
-- **OpenAI** for GPT-4 and TTS
+- **Groq** for Llama 3.3 70B LLM
+- **OpenAI** for TTS
 - **Pexels** for stock video footage
 - **MoviePy** for video processing
 - **FastAPI** for the backend framework
